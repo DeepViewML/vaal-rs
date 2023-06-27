@@ -1,0 +1,26 @@
+[package]
+name = "vaal"
+description = "VideoStream Library provides zero-copy video frame management and distribution across processes and containers."
+authors = ["Au-Zone Technologies"]
+readme = "README.md"
+license-file = "LICENSE.txt"
+documentation = "https://docs.rs/videostream"
+version = "0.1.0"
+edition = "2021"
+
+exclude = [
+    "/.github/*",
+    "/.gitattributes",
+    "/clippy.toml",
+    "/codecov.yml",
+]
+
+[lib]
+name = "vaal"
+
+[workspace]
+members = ["vaal-sys"]
+
+[dependencies]
+vaal-sys = {version = "^0.1.0", path = "./vaal-sys"}
+deepview-rt = {version = "^0.1.0", path = "../deepview-rt-rs"}

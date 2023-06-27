@@ -1,0 +1,11 @@
+[package]
+name = "vaal-sys"
+description = "Low-level FFI bindings for VAAL Library"
+readme = "README.md"
+license-file = "LICENSE.txt"
+homepage = "https://support.deepviewml.com"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "^0.2"
