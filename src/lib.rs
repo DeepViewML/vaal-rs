@@ -1,4 +1,4 @@
-use deepview_rt as dvrt;
+use deepviewrt as dvrt;
 use std::error::Error;
 use std::ffi::CString;
 use std::io;
