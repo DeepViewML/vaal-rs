@@ -27,5 +27,5 @@ name = "vaal"
 members = ["vaal-sys"]
 
 [dependencies]
-vaal-sys = {version = "^0.1.0", path = "./vaal-sys"}
-deepviewrt = {version = "^0.1.0", path = "../deepviewrt-rs"}
+vaal-sys = {version = "^0.1.0", path = "vaal-sys"}
+deepviewrt = "^0.1.0"
