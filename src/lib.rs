@@ -1,7 +1,5 @@
 use deepviewrt as dvrt;
-use std::error::Error;
-use std::ffi::CString;
-use std::io;
+use std::{error::Error, ffi::CString, io};
 use vaal_sys as ffi;
 
 pub struct Context {

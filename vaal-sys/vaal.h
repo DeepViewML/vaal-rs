@@ -173,6 +173,11 @@
 #define VAAL_VERSION_1_1 VAAL_VERSION_ENCODE(1, 1, 0)
 
 /**
+ * DeepView VAAL Version 1.4
+ */
+#define VAAL_VERSION_1_4 VAAL_VERSION_ENCODE(1, 4, 0)
+
+/**
  * This macro defines the target version when compiling against vaal.h and will
  * cause warnings to be generated when the target version does not include a
  * symbol or if a symbol is marked as depracated.
@@ -181,7 +186,7 @@
  * vaal.h file.
  */
 #ifndef VAAL_TARGET_VERSION
-#define VAAL_TARGET_VERSION VAAL_VERSION_1_1
+#define VAAL_TARGET_VERSION VAAL_VERSION_1_4
 #endif
 
 #if VAAL_TARGET_VERSION < VAAL_VERSION_ENCODE(1, 0, 0)
@@ -198,6 +203,14 @@
 #else
 #define VAAL_AVAILABLE_SINCE_1_1
 #define VAAL_DEPRECATED_SINCE_1_1 VAAL_DEPRECATED(1.1)
+#endif
+
+#if VAAL_TARGET_VERSION < VAAL_VERSION_ENCODE(1, 4, 0)
+#define VAAL_AVAILABLE_SINCE_1_4 VAAL_UNAVAILABLE(1.4)
+#define VAAL_DEPRECATED_SINCE_1_4
+#else
+#define VAAL_AVAILABLE_SINCE_1_4
+#define VAAL_DEPRECATED_SINCE_1_4 VAAL_DEPRECATED(1.4)
 #endif
 
 #ifndef MIN
@@ -251,6 +264,13 @@ typedef void NNModel;
  * VAALContext will off-load processing to the NPU accelerator.
  */
 #define VAAL_DEVICE_NPU "npu"
+
+/**
+ * VAALContext will off-load processing to the DeepViewRT OpenCL plugin which
+ * can run computations on any OpenCL 1.1 EP compatible device.  Refer to the
+ * DeepViewRT OpenCL plugin documentation for details and limitations.
+ */
+#define VAAL_DEVICE_OPENCL "opencl"
 
 /**
  * Unsigned normalization (0..1).
@@ -546,6 +566,26 @@ typedef struct {
 } VAALBox;
 
 /**
+ * @struct VAALEuler
+ *
+ */
+typedef struct {
+    float yaw;
+    float pitch;
+    float roll;
+} VAALEuler;
+
+/**
+ * @struct VAALKeypoint
+ *
+ */
+typedef struct {
+    float x;
+    float y;
+    float score;
+} VAALKeypoint;
+
+/**
  * @struct VAALContext
  *
  * Context object for VAAL to manage internal model data structures.  The
@@ -731,8 +771,8 @@ vaal_context_dict(VAALContext* context);
  */
 VAAL_AVAILABLE_SINCE_1_0
 VAAL_API
-void*
-vaal_context_model(VAALContext* context);
+const void*
+vaal_context_model(const VAALContext* context);
 
 /**
  * Queries the number of available parameters in the current context.  The count
@@ -1316,6 +1356,55 @@ vaal_boxes(VAALContext* context,
            size_t*      num_boxes);
 
 /**
+ * @brief Handles post-processing of the model's outputs and reading the
+ * keypoints into the user provided array of keypoints, up to @param
+ * max_keypoints.
+ *
+ * @param context The VAALContext which owns the model from which we want
+ * keypoints.
+ * @param keypoints An array of keypoints which will receive the decoded
+ * results.
+ * @param max_keypoints The size of @param keypoints limits the maximum number
+ * of keypoints.
+ * @param num_keypoints The number of keypoints detected.
+ *
+ * @return VAALError
+ *
+ * @since 1.4
+ */
+VAAL_AVAILABLE_SINCE_1_4
+VAAL_API
+VAALError
+vaal_keypoints(VAALContext*  context,
+               VAALKeypoint* keypoints,
+               size_t        max_keypoints,
+               size_t*       num_keypoints);
+
+/**
+ * @brief Handles post-processing of the model's outputs and reading the euler
+ * angles into the user provided array of orientations. This function currently
+ * will only return a single set of euler angles, but will be extended in the
+ * future to have the same capability as other post-processing functions.
+ *
+ * @param context The VAALContext which owns the model from which we want euler
+ * angles.
+ * @param orientations An array of orientations which will receive the decoded
+ * results.
+ * @param num_orientations The number of orientations detected. (Will always be
+ * 1 currently)
+ *
+ * @return VAALError
+ *
+ * @since 1.4
+ */
+VAAL_AVAILABLE_SINCE_1_4
+VAAL_API
+VAALError
+vaal_euler(VAALContext* context,
+           VAALEuler*   orientations,
+           size_t*      num_orientations);
+
+/**
  * Access the DeepViewRT NNTensor objects for the model's output.  The function
  * supports multiple outputs which are selected using the index parameter.  To
  * confirm the number of outputs you may use the @ref vaal_output_count()
@@ -1510,6 +1599,45 @@ vaal_set_detection_model_type(NNModel*   model,
 VAAL_API
 VAALError
 detection_remap_tensors(VAALContext* context, NNTensor** detection_tensors);
+
+enum vaal_model_type {
+    model_type_none             = 0,
+    model_type_people_detection = 10,
+    model_type_face_detection   = 20,
+    model_type_head_pose        = 30,
+    model_type_human_pose       = 40,
+};
+
+/**
+ * @brief Returns the model path that VAAL will search for models requested.
+ *
+ * @return const char*
+ *
+ * @since 1.4
+ */
+VAAL_AVAILABLE_SINCE_1_4
+VAAL_API
+const char*
+vaal_model_path();
+
+/**
+ * @brief Creates a VAALContext that is using the specified engine and attempts
+ * to load a model that is of the provided model type. Must call 
+ * vaal_context_release on returned context, to avoid memory leak.
+ *
+ * @param engine The engine that this context should use ('cpu', 'gpu', 'npu')
+ *
+ * @param m_type The type of model to load into this context
+ *
+ * @return VAALContext* A fully initialized context, which will be loaded with
+ * the specified model type if it was found.
+ *
+ * @since 1.4
+ */
+VAAL_AVAILABLE_SINCE_1_4
+VAAL_API
+VAALContext*
+vaal_model_probe(const char* engine, enum vaal_model_type m_type);
 
 #ifdef __cplusplus
 }
