@@ -44,4 +44,32 @@ impl Context {
         }
         return Err(());
     }
+
+    pub fn load_frame_dmabuf_roi(
+        &self,
+        tensor: &dvrt::NNTensor,
+        handle: i32,
+        fourcc: u32,
+        width: i32,
+        height: i32,
+        proc: u32,
+        roi: &[i32; 4],
+    ) -> Result<(), ()> {
+        let result = unsafe {
+            ffi::vaal_load_frame_dmabuf(
+                self.ptr,
+                tensor.to_mut_ptr() as *mut ffi::NNTensor,
+                handle,
+                fourcc,
+                width,
+                height,
+                roi.as_ptr(),
+                proc,
+            )
+        };
+        if result == ffi::VAALError_VAAL_SUCCESS {
+            return Ok(());
+        }
+        return Err(());
+    }
 }
