@@ -80,9 +80,7 @@ impl Context {
         let result = unsafe { ffi::vaal_label(self.ptr, index as std::os::raw::c_int) };
 
         if result.is_null() {
-            return Err(Error::WrapperError(
-                "invalid label index".to_string(),
-            ));
+            return Err(Error::WrapperError("invalid label index".to_string()));
         }
         let cstr_label = unsafe { CStr::from_ptr(result) };
         let label = match cstr_label.to_str() {
@@ -90,9 +88,7 @@ impl Context {
             Err(e) => return Err(Error::WrapperError(e.to_string())),
         };
         if label == "" {
-            return Err(Error::WrapperError(
-                "invalid label index".to_string(),
-            ));
+            return Err(Error::WrapperError("invalid label index".to_string()));
         }
         return Ok(label);
     }
