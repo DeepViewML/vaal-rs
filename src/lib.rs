@@ -57,8 +57,14 @@ impl Context {
         fourcc: u32,
         width: i32,
         height: i32,
+        roi: Option<&[i32; 4]>,
         proc: u32,
     ) -> Result<(), Error> {
+        let roi_ = if roi.is_none() {
+            std::ptr::null()
+        } else {
+            roi.unwrap().as_ptr()
+        };
         let result = unsafe {
             ffi::vaal_load_frame_dmabuf(
                 self.ptr,
@@ -67,7 +73,7 @@ impl Context {
                 fourcc,
                 width,
                 height,
-                std::ptr::null(),
+                roi_,
                 proc,
             )
         };
