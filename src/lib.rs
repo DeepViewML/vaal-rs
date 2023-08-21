@@ -1,7 +1,8 @@
 use deepviewrt as dvrt;
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::io;
+use std::{
+    ffi::{CStr, CString},
+    io,
+};
 use vaal_sys as ffi;
 pub mod error;
 use error::Error;
