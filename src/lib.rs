@@ -106,7 +106,7 @@ impl Context {
 
     pub fn load_frame_dmabuf(
         &self,
-        tensor: Option<&dvrt::tensor::NNTensor>,
+        tensor: Option<&dvrt::tensor::Tensor>,
         handle: i32,
         fourcc: u32,
         width: i32,
@@ -143,13 +143,13 @@ impl Context {
         return Ok(());
     }
 
-    pub fn output_tensor(&self, index: i32) -> Option<dvrt::tensor::NNTensor> {
+    pub fn output_tensor(&self, index: i32) -> Option<dvrt::tensor::Tensor> {
         let ret = unsafe { ffi::vaal_output_tensor(self.ptr, index) };
         if ret.is_null() {
             return None;
         }
 
-        let tensor = unsafe { dvrt::tensor::NNTensor::from_ptr(ret as _, false) };
+        let tensor = unsafe { dvrt::tensor::Tensor::from_ptr(ret as _, false) };
         if tensor.is_err() {
             return None;
         }
