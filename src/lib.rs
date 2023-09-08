@@ -16,7 +16,7 @@ pub fn clock_now() -> i64 {
 
 pub struct Context {
     ptr: *mut ffi::VAALContext,
-	dvrt_context: Option<dvrt::context::NNContext>,
+    dvrt_context: Option<dvrt::context::NNContext>,
 }
 
 unsafe impl Send for Context {}
@@ -32,19 +32,22 @@ impl Context {
             return Err(Error::IoError(io::Error::last_os_error().kind()));
         }
 
-        return Ok(Context { ptr, dvrt_context: None });
+        return Ok(Context {
+            ptr,
+            dvrt_context: None,
+        });
     }
 
     pub fn dvrt_context(&mut self) -> Result<&mut dvrt::context::NNContext, Error> {
-		if self.dvrt_context.is_some() {
-			return Ok(self.dvrt_context.as_mut().unwrap());
-		}
+        if self.dvrt_context.is_some() {
+            return Ok(self.dvrt_context.as_mut().unwrap());
+        }
         let ret = unsafe { ffi::vaal_context_deepviewrt(self.ptr) };
         let context = unsafe { dvrt::context::NNContext::from_ptr(ret as _) };
-		if let Err(dvrt::error::Error::WrapperError(string)) = context {
-			return Err(Error::WrapperError(string));
-		}
-		return Ok(self.dvrt_context.insert(context.unwrap()));
+        if let Err(dvrt::error::Error::WrapperError(string)) = context {
+            return Err(Error::WrapperError(string));
+        }
+        return Ok(self.dvrt_context.insert(context.unwrap()));
     }
 
     pub fn load_model_file<P: AsRef<Path> + Into<Vec<u8>>>(
