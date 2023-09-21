@@ -16,7 +16,7 @@ pub fn clock_now() -> i64 {
 
 pub struct Context {
     ptr: *mut ffi::VAALContext,
-    dvrt_context: Option<dvrt::context::NNContext>,
+    dvrt_context: Option<dvrt::context::Context>,
 }
 
 unsafe impl Send for Context {}
@@ -38,12 +38,12 @@ impl Context {
         });
     }
 
-    pub fn dvrt_context(&mut self) -> Result<&mut dvrt::context::NNContext, Error> {
+    pub fn dvrt_context(&mut self) -> Result<&mut dvrt::context::Context, Error> {
         if self.dvrt_context.is_some() {
             return Ok(self.dvrt_context.as_mut().unwrap());
         }
         let ret = unsafe { ffi::vaal_context_deepviewrt(self.ptr) };
-        let context = unsafe { dvrt::context::NNContext::from_ptr(ret as _) };
+        let context = unsafe { dvrt::context::Context::from_ptr(ret as _) };
         if let Err(dvrt::error::Error::WrapperError(string)) = context {
             return Err(Error::WrapperError(string));
         }
@@ -63,6 +63,36 @@ impl Context {
         };
         if result != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(result));
+        }
+        return Ok(());
+    }
+
+    pub fn load_image_file(
+        &mut self,
+        tensor: Option<&mut dvrt::tensor::Tensor>,
+        filename: &str,
+        roi: Option<&[i32]>,
+        pred: u32,
+    ) -> Result<(), Error> {
+        let tensor_: *mut ffi::NNTensor = if let Some(tensor_) = tensor {
+            tensor_.to_mut_ptr() as *mut ffi::NNTensor
+        } else {
+            std::ptr::null_mut() as *mut ffi::NNTensor
+        };
+
+        let roi_: *const i32 = if let Some(roi_) = roi {
+            roi_.as_ptr()
+        } else {
+            std::ptr::null() as *const i32
+        };
+
+        let c_str_filename = CString::new(filename).unwrap();
+
+        let ret = unsafe {
+            ffi::vaal_load_image_file(self.ptr, tensor_, c_str_filename.as_ptr(), roi_, pred)
+        };
+        if ret != ffi::VAALError_VAAL_SUCCESS {
+            return Err(Error::from(ret));
         }
         return Ok(());
     }
@@ -91,7 +121,7 @@ impl Context {
             return Err(Error::WrapperError(err));
         }
 
-        let ret = dvrt::model::Model::try_from_ptr(ret);
+        let ret = unsafe { dvrt::model::Model::try_from_ptr(ret) };
         if let Err(e) = ret {
             return Err(Error::WrapperError(e.to_string()));
         }
