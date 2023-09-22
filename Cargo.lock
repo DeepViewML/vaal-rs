@@ -4,14 +4,18 @@ version = 3
 
 [[package]]
 name = "deepviewrt"
-version = "0.0.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e8964fdfcaf52a296de3c26392c997ee379fde5e25ded978c0e7894b6a920ba"
 dependencies = [
  "deepviewrt-sys",
 ]
 
 [[package]]
 name = "deepviewrt-sys"
-version = "0.0.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2a014d93a21ac6e997b6a9ed732ff1f21e4724012facc215ac1c6db660c6769"
 dependencies = [
  "libc",
 ]
