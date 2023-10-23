@@ -7,7 +7,7 @@ use std::{
 };
 use vaal_sys as ffi;
 pub mod error;
-use error::Error;
+pub use error::Error;
 pub use ffi::VAALBox;
 
 pub fn clock_now() -> i64 {
