@@ -1,6 +1,7 @@
 use deepviewrt as dvrt;
 use std::{
     ffi::{CStr, CString},
+    fs::read,
     io,
     path::Path,
     ptr,
@@ -17,6 +18,7 @@ pub fn clock_now() -> i64 {
 pub struct Context {
     ptr: *mut ffi::VAALContext,
     dvrt_context: Option<dvrt::context::Context>,
+    model: Vec<u8>,
 }
 
 unsafe impl Send for Context {}
@@ -35,6 +37,7 @@ impl Context {
         return Ok(Context {
             ptr,
             dvrt_context: None,
+            model: Vec::new()
         });
     }
 
@@ -50,21 +53,28 @@ impl Context {
         return Ok(self.dvrt_context.insert(context.unwrap()));
     }
 
-    pub fn load_model_file<P: AsRef<Path> + Into<Vec<u8>>>(
-        &self,
-        filename: P,
-    ) -> Result<(), Error> {
-        let c_str_filename = CString::new(filename).unwrap();
-        let result = unsafe {
-            ffi::vaal_load_model_file(
-                self.ptr,
-                c_str_filename.as_ptr() as *const std::os::raw::c_char,
+    pub fn load_model(&mut self, memory: Vec<u8>) -> Result<(), Error> {
+        self.model = memory;
+        
+        let ret = unsafe {
+            ffi::vaal_load_model(
+                self.ptr, 
+                self.model.len(), 
+                self.model.as_ptr() as *const std::ffi::c_void
             )
         };
-        if result != ffi::VAALError_VAAL_SUCCESS {
-            return Err(Error::from(result));
+        if ret != ffi::VAALError_VAAL_SUCCESS {
+            return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
+    }
+
+    pub fn load_model_file<P: AsRef<Path> + Into<Vec<u8>>>(
+        &mut self,
+        filename: P,
+    ) -> Result<(), Error> {
+        let model = read(filename)?;
+        self.load_model(model)
     }
 
     pub fn load_image_file(
@@ -114,18 +124,12 @@ impl Context {
         return Ok(num_boxes);
     }
 
-    pub fn model(&self) -> Result<dvrt::model::Model, Error> {
-        let ret = unsafe { ffi::vaal_context_model(self.ptr) };
-        if ret.is_null() {
-            let err = String::from("no model loaded");
-            return Err(Error::WrapperError(err));
+    pub fn model(&self) -> Result<&[u8], Error> {
+        if self.model.is_empty() {
+            Err(Error::WrapperError(String::from("No model available")))
+        } else {
+            Ok(&self.model)
         }
-
-        let ret = unsafe { dvrt::model::Model::try_from_ptr(ret) };
-        if let Err(e) = ret {
-            return Err(Error::WrapperError(e.to_string()));
-        }
-        return Ok(ret.unwrap());
     }
 
     pub fn unload_model(&mut self) -> Result<(), Error> {
