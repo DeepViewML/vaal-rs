@@ -4,18 +4,16 @@ version = 3
 
 [[package]]
 name = "deepviewrt"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4e6852a4ce843155f582ce1eaa1f217c98f2fb632036fa23880ef8bc18b5a12"
+version = "0.0.0"
+source = "git+https://github.com/Charlie-AuZone/deepviewrt-rs.git?branch=EDGEAI-364#2ca0d71c3c20baa5fd9888a7da2a7dd2faafc54a"
 dependencies = [
  "deepviewrt-sys",
 ]
 
 [[package]]
 name = "deepviewrt-sys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d368cf2f773e1467f291c573d6ee738e01670c9e01281141a34b87139ac176aa"
+version = "0.0.0"
+source = "git+https://github.com/Charlie-AuZone/deepviewrt-rs.git?branch=EDGEAI-364#2ca0d71c3c20baa5fd9888a7da2a7dd2faafc54a"
 dependencies = [
  "libc",
 ]
