@@ -37,7 +37,7 @@ impl Context {
         return Ok(Context {
             ptr,
             dvrt_context: None,
-            model: Vec::new()
+            model: Vec::new(),
         });
     }
 
@@ -55,12 +55,12 @@ impl Context {
 
     pub fn load_model(&mut self, memory: Vec<u8>) -> Result<(), Error> {
         self.model = memory;
-        
+
         let ret = unsafe {
             ffi::vaal_load_model(
-                self.ptr, 
-                self.model.len(), 
-                self.model.as_ptr() as *const std::ffi::c_void
+                self.ptr,
+                self.model.len(),
+                self.model.as_ptr() as *const std::ffi::c_void,
             )
         };
         if ret != ffi::VAALError_VAAL_SUCCESS {
