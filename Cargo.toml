@@ -27,4 +27,4 @@ members = ["vaal-sys"]
 
 [dependencies]
 vaal-sys = {version = "0.0.0", path = "vaal-sys"}
-deepviewrt = { git = "https://github.com/Charlie-AuZone/deepviewrt-rs.git", branch = "EDGEAI-364" }
+deepviewrt = { git = "https://github.com/DeepViewML/deepviewrt-rs.git", branch = "main" }
