@@ -1,4 +1,4 @@
-use deepviewrt as dvrt;
+use deepviewrt::{self as dvrt, model};
 use std::{
     ffi::{CStr, CString},
     fs::read,
@@ -8,9 +8,9 @@ use std::{
 };
 use vaal_sys as ffi;
 pub mod error;
+pub use deepviewrt;
 pub use error::Error;
 pub use ffi::VAALBox;
-
 pub fn clock_now() -> i64 {
     return unsafe { ffi::vaal_clock_now() };
 }
@@ -44,13 +44,17 @@ impl Context {
     pub fn dvrt_context(&mut self) -> Result<&mut dvrt::context::Context, Error> {
         if self.dvrt_context.is_some() {
             return Ok(self.dvrt_context.as_mut().unwrap());
+        } else {
+            Err(Error::WrapperError("No DeepViewRT context".to_owned()))
         }
-        let ret = unsafe { ffi::vaal_context_deepviewrt(self.ptr) };
-        let context = unsafe { dvrt::context::Context::from_ptr(ret as _) };
-        if let Err(dvrt::error::Error::WrapperError(string)) = context {
-            return Err(Error::WrapperError(string));
+    }
+
+    pub fn dvrt_context_const(&self) -> Result<&dvrt::context::Context, Error> {
+        if self.dvrt_context.is_some() {
+            return Ok(self.dvrt_context.as_ref().unwrap());
+        } else {
+            Err(Error::WrapperError("No DeepViewRT context".to_owned()))
         }
-        return Ok(self.dvrt_context.insert(context.unwrap()));
     }
 
     pub fn load_model(&mut self, memory: Vec<u8>) -> Result<(), Error> {
