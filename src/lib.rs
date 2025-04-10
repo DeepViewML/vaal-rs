@@ -70,6 +70,13 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
+
+        let ret = unsafe { ffi::vaal_context_deepviewrt(self.ptr) };
+        let context = unsafe { dvrt::context::Context::from_ptr(ret as _) };
+        if let Err(dvrt::error::Error::WrapperError(string)) = context {
+            return Err(Error::WrapperError(string));
+        }
+        let _ = self.dvrt_context.insert(context.unwrap());
         Ok(())
     }
 
@@ -183,6 +190,32 @@ impl Context {
 
         return Ok(());
     }
+
+    // pub fn input_tensor(&self, index: i32) -> Option<dvrt::tensor::Tensor> {
+    //     if self.dvrt_context.as_ref().is_none() {
+    //         return None;
+    //     }
+    //     if self.model().is_err() {
+    //         return None;
+    //     }
+    //     let index = index as usize;
+    //     let input_tensor_index = model::inputs(self.model().unwrap()).unwrap();
+    //     if input_tensor_index.len() <= index {
+    //         return None;
+    //     }
+    //     if index < 0 {
+    //         return None;
+    //     }
+    //     let tensor = self
+    //         .dvrt_context
+    //         .as_ref()
+    //         .unwrap()
+    //         .tensor(input_tensor_index[index] as usize);
+    //     if tensor.is_err() {
+    //         return None;
+    //     }
+    //     return Some(tensor.unwrap());
+    // }
 
     pub fn output_tensor(&self, index: i32) -> Option<dvrt::tensor::Tensor> {
         let ret = unsafe { ffi::vaal_output_tensor(self.ptr, index) };
