@@ -17,21 +17,27 @@ impl From<ffi::VAALError> for Error {
         }
         let desc = unsafe { CStr::from_ptr(ret) };
         match desc.to_str() {
-            Ok(estr) => return Error::VAALError(estr),
-            Err(_) => return Error::Null(),
+            Ok(estr) => Error::VAALError(estr),
+            Err(_) => Error::Null(),
         }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Error::IoError(value.kind())
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::VAALError(e) => return write!(f, "{}", e),
-            Error::WrapperError(e) => return write!(f, "{}", e),
-            Error::Null() => return write!(f, "null/unknown error message unavailable"),
+            Error::VAALError(e) => write!(f, "{}", e),
+            Error::WrapperError(e) => write!(f, "{}", e),
+            Error::Null() => write!(f, "null/unknown error message unavailable"),
             Error::IoError(kind) => {
                 let e = std::io::Error::from(*kind);
-                return write!(f, "{}", e);
+                write!(f, "{}", e)
             }
         }
     }

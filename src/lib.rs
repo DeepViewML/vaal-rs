@@ -1,22 +1,24 @@
 use deepviewrt as dvrt;
 use std::{
     ffi::{CStr, CString},
+    fs::read,
     io,
     path::Path,
     ptr,
 };
 use vaal_sys as ffi;
 pub mod error;
+pub use deepviewrt;
 pub use error::Error;
 pub use ffi::VAALBox;
-
 pub fn clock_now() -> i64 {
-    return unsafe { ffi::vaal_clock_now() };
+    unsafe { ffi::vaal_clock_now() }
 }
 
 pub struct Context {
     ptr: *mut ffi::VAALContext,
     dvrt_context: Option<dvrt::context::Context>,
+    model: Vec<u8>,
 }
 
 unsafe impl Send for Context {}
@@ -32,39 +34,58 @@ impl Context {
             return Err(Error::IoError(io::Error::last_os_error().kind()));
         }
 
-        return Ok(Context {
+        Ok(Context {
             ptr,
             dvrt_context: None,
-        });
+            model: Vec::new(),
+        })
     }
 
     pub fn dvrt_context(&mut self) -> Result<&mut dvrt::context::Context, Error> {
         if self.dvrt_context.is_some() {
-            return Ok(self.dvrt_context.as_mut().unwrap());
+            Ok(self.dvrt_context.as_mut().unwrap())
+        } else {
+            Err(Error::WrapperError("No DeepViewRT context".to_owned()))
         }
+    }
+
+    pub fn dvrt_context_const(&self) -> Result<&dvrt::context::Context, Error> {
+        if self.dvrt_context.is_some() {
+            Ok(self.dvrt_context.as_ref().unwrap())
+        } else {
+            Err(Error::WrapperError("No DeepViewRT context".to_owned()))
+        }
+    }
+
+    pub fn load_model(&mut self, memory: Vec<u8>) -> Result<(), Error> {
+        self.model = memory;
+
+        let ret = unsafe {
+            ffi::vaal_load_model(
+                self.ptr,
+                self.model.len(),
+                self.model.as_ptr() as *const std::ffi::c_void,
+            )
+        };
+        if ret != ffi::VAALError_VAAL_SUCCESS {
+            return Err(Error::from(ret));
+        }
+
         let ret = unsafe { ffi::vaal_context_deepviewrt(self.ptr) };
         let context = unsafe { dvrt::context::Context::from_ptr(ret as _) };
         if let Err(dvrt::error::Error::WrapperError(string)) = context {
             return Err(Error::WrapperError(string));
         }
-        return Ok(self.dvrt_context.insert(context.unwrap()));
+        let _ = self.dvrt_context.insert(context.unwrap());
+        Ok(())
     }
 
     pub fn load_model_file<P: AsRef<Path> + Into<Vec<u8>>>(
-        &self,
+        &mut self,
         filename: P,
     ) -> Result<(), Error> {
-        let c_str_filename = CString::new(filename).unwrap();
-        let result = unsafe {
-            ffi::vaal_load_model_file(
-                self.ptr,
-                c_str_filename.as_ptr() as *const std::os::raw::c_char,
-            )
-        };
-        if result != ffi::VAALError_VAAL_SUCCESS {
-            return Err(Error::from(result));
-        }
-        return Ok(());
+        let model = read(filename)?;
+        self.load_model(model)
     }
 
     pub fn load_image_file(
@@ -83,7 +104,7 @@ impl Context {
         let roi_: *const i32 = if let Some(roi_) = roi {
             roi_.as_ptr()
         } else {
-            std::ptr::null() as *const i32
+            std::ptr::null()
         };
 
         let c_str_filename = CString::new(filename).unwrap();
@@ -94,7 +115,7 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn boxes(&self, boxes: &mut Vec<VAALBox>, max_len: usize) -> Result<usize, Error> {
@@ -111,21 +132,15 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(num_boxes);
+        Ok(num_boxes)
     }
 
-    pub fn model(&self) -> Result<dvrt::model::Model, Error> {
-        let ret = unsafe { ffi::vaal_context_model(self.ptr) };
-        if ret.is_null() {
-            let err = String::from("no model loaded");
-            return Err(Error::WrapperError(err));
+    pub fn model(&self) -> Result<&[u8], Error> {
+        if self.model.is_empty() {
+            Err(Error::WrapperError(String::from("No model available")))
+        } else {
+            Ok(&self.model)
         }
-
-        let ret = unsafe { dvrt::model::Model::try_from_ptr(ret) };
-        if let Err(e) = ret {
-            return Err(Error::WrapperError(e.to_string()));
-        }
-        return Ok(ret.unwrap());
     }
 
     pub fn unload_model(&mut self) -> Result<(), Error> {
@@ -134,7 +149,7 @@ impl Context {
         if result != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(result));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn load_frame_dmabuf(
@@ -147,24 +162,24 @@ impl Context {
         roi: Option<&[i32; 4]>,
         proc: u32,
     ) -> Result<(), Error> {
-        let roi_ = if roi.is_none() {
+        let roi_ = if let Some(roi) = roi {
+            roi.as_ptr()
+        } else {
             std::ptr::null()
-        } else {
-            roi.unwrap().as_ptr()
         };
-        let ptr;
-        if tensor.is_some() {
-            ptr = tensor.unwrap().to_mut_ptr() as *mut ffi::NNTensor;
+
+        let ptr = if let Some(tensor) = tensor {
+            tensor.to_mut_ptr() as *mut ffi::NNTensor
         } else {
-            ptr = ptr::null_mut();
-        }
+            ptr::null_mut()
+        };
         let result = unsafe {
             ffi::vaal_load_frame_dmabuf(self.ptr, ptr, handle, fourcc, width, height, roi_, proc)
         };
         if result != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(result));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn run_model(&self) -> Result<(), Error> {
@@ -173,7 +188,7 @@ impl Context {
             return Err(Error::from(ret));
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn output_tensor(&self, index: i32) -> Option<dvrt::tensor::Tensor> {
@@ -186,7 +201,7 @@ impl Context {
         if tensor.is_err() {
             return None;
         }
-        return Some(tensor.unwrap());
+        Some(tensor.unwrap())
     }
 
     pub fn output_count(&self) -> Result<i32, Error> {
@@ -197,7 +212,7 @@ impl Context {
             )));
         }
 
-        return Ok(ret);
+        Ok(ret)
     }
 
     pub fn output_name(&self, index: i32) -> Option<&str> {
@@ -207,10 +222,7 @@ impl Context {
         }
 
         let cstr_name = unsafe { CStr::from_ptr(ret) };
-        match cstr_name.to_str() {
-            Ok(name) => return Some(name),
-            Err(_) => return None,
-        };
+        cstr_name.to_str().ok()
     }
 
     pub fn label(&self, index: i32) -> Result<&str, Error> {
@@ -224,10 +236,10 @@ impl Context {
             Ok(label) => label,
             Err(e) => return Err(Error::WrapperError(e.to_string())),
         };
-        if label == "" {
+        if label.is_empty() {
             return Err(Error::WrapperError("invalid label index".to_string()));
         }
-        return Ok(label);
+        Ok(label)
     }
 
     pub fn labels(&self) -> Vec<&str> {
@@ -261,7 +273,7 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn parameter_getf() {}
@@ -277,7 +289,7 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn parameter_geti() {}
@@ -293,7 +305,7 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
     }
 
     pub fn parameter_getu() {}
@@ -309,7 +321,7 @@ impl Context {
         if ret != ffi::VAALError_VAAL_SUCCESS {
             return Err(Error::from(ret));
         }
-        return Ok(());
+        Ok(())
     }
 }
 
